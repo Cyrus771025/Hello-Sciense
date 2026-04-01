@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>生态瓶模拟器 - 动态平衡实验室</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动时意外选中文本，不影响输入控件 */
+        }
+
+        body {
+            background: linear-gradient(145deg, #d4e9f7 0%, #b8d9f0 100%);
+            font-family: 'Segoe UI', 'Roboto', 'Noto Sans', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 主模拟器面板 */
+        .simulator-container {
+            max-width: 1400px;
+            width: 100%;
+            background: #fef9e8;
+            border-radius: 3rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255,255,255,0.6);
+            overflow: hidden;
+            backdrop-filter: blur(0px);
+            transition: all 0.2s;
+        }
+
+        /* 头部 */
+        .header {
+            background: #2c5a2e;
+            color: white;
+            padding: 1.2rem 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+        }
+        .header p {
+            margin: 0.3rem 0 0;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        /* 三列布局 */
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            padding: 1.8rem;
+            background: #e2f0e6;
+        }
+
+        /* 左侧控制区 */
+        .control-panel {
+            flex: 1.2;
+            min-width: 240px;
+            background: #faf3e0;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.1);
+        }
+
+        /* 中间生态瓶展示区 */
+        .aquarium-area {
+            flex: 2;
+            min-width: 320px;
+            background: #cae3da;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: inset 0 0 0 2px #fff9, 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        /* 右侧状态区 */
+        .status-area {
+            flex: 1;
+            min-width: 230px;
+            background: #fff7ef;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.1);
+        }
+
+        /* 公用卡片样式 */
+        .card-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-left: 6px solid #3b8c3a;
+            padding-left: 12px;
+            margin: 0 0 12px 0;
+            color: #2d4a22;
+        }
+
+        .species-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .species-item {
+            background: white;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: 0.1s;
+            cursor: pointer;
+            border: 1px solid #cfd8c5;
+        }
+        .species-item.selected {
+            background: #c8e6d9;
+            border: 2px solid #2e7d32;
+            box-shadow: 0 0 0 2px #b9f6ca;
+        }
+        .species-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .species-emoji {
+            font-size: 1.5rem;
+        }
+        .counter {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .counter button {
+            background: #d9e0c9;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .counter button:active {
+            background: #b0be9a;
+        }
+        .counter span {
+            min-width: 28px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* 环境控制 */
+        .env-control {
+            background: #e2dfce;
+            border-radius: 1.5rem;
+            padding: 12px;
+            margin-top: 20px;
+        }
+        .env-item {
+            margin: 12px 0;
+        }
+        label {
+            font-weight: 500;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin-top: 6px;
+        }
+        .light-select {
+            width: 100%;
+            padding: 6px;
+            border-radius: 40px;
+            border: 1px solid #aaa;
+            background: white;
+        }
+
+        /* 生态瓶视觉 */
+        .bottle {
+            background: #b2d8e6;
+            border-radius: 0 0 80px 80px;
+            border: 4px solid #6f4f2e;
+            border-top: none;
+            min-height: 380px;
+            position: relative;
+            background-image: radial-gradient(circle at 20% 40%, rgba(80,50,20,0.1) 2%, transparent 2.5%);
+            background-size: 18px 18px;
+            box-shadow: inset 0 15px 20px rgba(0,0,0,0.05), 0 5px 10px rgba(0,0,0,0.1);
+            padding: 20px 12px 12px;
+        }
+        .sand-layer {
+            background: #dbb87c;
+            height: 24px;
+            width: 100%;
+            border-radius: 20px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            box-shadow: inset 0 1px 3px #aa8b54, 0 1px 2px white;
+        }
+        .water-info {
+            font-size: 0.8rem;
+            text-align: center;
+            background: #9bc4c0aa;
+            border-radius: 30px;
+            padding: 4px;
+            margin: 5px 0;
+        }
+        .species-badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+        .badge {
+            background: #f7f3e0cc;
+            border-radius: 30px;
+            padding: 2px 8px;
+            backdrop-filter: blur(2px);
+        }
+
+        /* 步骤提示与健康度 */
+        .step-progress {
+            background: #e9e1cf;
+            border-radius: 28px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        .step-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .step-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 22px;
+            background: #bdb28b;
+            display: inline-block;
+            text-align: center;
+            line-height: 22px;
+            color: white;
+            font-weight: bold;
+        }
+        .step-dot.done {
+            background: #2e7d32;
+        }
+        .health-percent {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            color: #1f543b;
+        }
+        .reset-btn {
+            background: #ca5310;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 12px 18px;
+            border-radius: 60px;
+            width: 100%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: 0.1s;
+            box-shadow: 0 2px 6px black;
+        }
+        .reset-btn:active {
+            transform: scale(0.97);
+        }
+        .tip-box {
+            background: #efebc5;
+            border-radius: 24px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 0.75rem;
+            border-left: 6px solid #558b2f;
+        }
+        .simulate-survive {
+            background: #3c7a3e;
+            border: none;
+            color: white;
+            border-radius: 60px;
+            padding: 6px 14px;
+            margin-top: 8px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .click-hint {
+            font-size: 0.7rem;
+            background: #fbe9c3;
+            padding: 5px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        hr {
+            margin: 12px 0;
+        }
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 8px;
+            background: #d4cfb8;
+        }
+    </style>
+</head>
+<body>
+<div class="simulator-container">
+    <div class="header">
+        <h1>🌿 生态瓶模拟实验室 🌊</h1>
+        <p>动态平衡 · 探索生产者、消费者与分解者的微妙关系</p>
+    </div>
+    <div class="dashboard">
+        <!-- 左侧：生物库 & 环境控制 -->
+        <div class="control-panel">
+            <div class="card-title">🐟 系统控制</div>
+            <div class="click-hint">✨ 点击物种高亮 → 再点击水族箱即可添加 ✨<br>或直接使用 + / - 按钮</div>
+            <div class="species-list" id="speciesListContainer"></div>
+            
+            <div class="env-control">
+                <div class="card-title">🌦️ 环境控制</div>
+                <div class="env-item">
+                    <label>☀️ 光照强度：</label>
+                    <select id="lightIntensity" class="light-select">
+                        <option value="weak">弱光</option>
+                        <option value="medium" selected>中光</option>
+                        <option value="strong">强光</option>
+                    </select>
+                </div>
+                <div class="env-item">
+                    <label>🌡️ 水温 (0~30℃) ：<span id="tempValue">20</span>°C</label>
+                    <input type="range" id="tempSlider" min="0" max="30" value="20" step="1">
+                </div>
+            </div>
+            <button id="simulatePlantAliveBtn" class="simulate-survive">🌱 模拟植物存活 (等待一周) 🌱</button>
+        </div>
+
+        <!-- 中间：生态瓶区域（拖拽/点击目标） -->
+        <div class="aquarium-area">
+            <div class="card-title">🧪 生态瓶 (透明油桶容器)</div>
+            <div id="aquariumBottle" class="bottle" style="cursor: pointer;">
+                <div id="sandLayer" class="sand-layer" style="display: none;">🏖️ 沙层</div>
+                <div id="waterMark" class="water-info">💧 大半桶自然水</div>
+                <div id="biotaDisplay">
+                    <div class="species-badge-list" id="livingBadges"></div>
+                </div>
+                <div style="font-size:0.7rem; margin-top: 10px; text-align:center;">⬅️ 点击这里添加选中的生物</div>
+            </div>
+            <div style="margin-top: 12px; text-align:center; background:#e6ddc4; border-radius:30px; padding:5px;">
+                <span id="stepMsgHint">⚡ 按照步骤：先准备容器 → 铺沙加水 → 种植植物 → 等待植物存活 → 再放入动物</span>
+            </div>
+        </div>
+
+        <!-- 右侧：状态和重置 -->
+        <div class="status-area">
+            <div class="step-progress">
+                <div class="card-title">📋 制作流程</div>
+                <div id="step1" class="step-item"><span class="step-dot">1</span> 准备容器 (裁剪油桶)</div>
+                <div id="step2" class="step-item"><span class="step-dot">2</span> 铺沙+大半桶自然水</div>
+                <div id="step3" class="step-item"><span class="step-dot">3</span> 种植植物 (添加水生植物)</div>
+                <div id="step4" class="step-item"><span class="step-dot">4</span> 🌟 植物存活状态 🌟</div>
+                <div id="step5" class="step-item"><span class="step-dot">5</span> 放入动物 (鱼/虾/田螺)</div>
+            </div>
+            <div class="card-title">❤️ 生态瓶健康度</div>
+            <div class="health-percent" id="healthPercent">0%</div>
+            <progress id="healthBar" value="0" max="100" style="width:100%; height:16px; border-radius:12px;"></progress>
+            <button id="resetEcoBtn" class="reset-btn">🔄 重置生态瓶</button>
+            <div class="tip-box">
+                💡 科学小贴士：生产者（沉水植物）产氧，消费者（鱼虾）控制藻类，分解者（田螺/细菌）清洁水质。<br>
+                📐 1升水养1厘米鱼，水草需占1/3! 保持平衡才能健康。
+            </div>
+        </div>
+    </div>
+    <footer>🐠 按顺序操作 | 调整光照与温度影响健康度 | 植物存活后才能放动物避免缺氧</footer>
+</div>
+
+<script>
+    // 定义物种库
+    const speciesDB = [
+        { id: "waterHyacinth", name: "水葫芦", type: "plant", emoji: "🌿", key: "hyacinth" },
+        { id: "hornwort", name: "金鱼藻", type: "plant", emoji: "🌱", key: "hornwort" },
+        { id: "aquaticGrass", name: "水草", type: "plant", emoji: "🍃", key: "grass" },
+        { id: "duckweed", name: "浮萍", type: "plant", emoji: "🪷", key: "duckweed" },
+        { id: "snail", name: "田螺", type: "decomposer", emoji: "🐚", key: "snail" },
+        { id: "shrimp", name: "黑壳虾", type: "consumer", emoji: "🦐", key: "shrimp" },
+        { id: "fish", name: "小鱼", type: "consumer", emoji: "🐟", key: "fish" }
+    ];
+
+    // 生态瓶内部数量存储
+    let counts = {
+        hyacinth: 0, hornwort: 0, grass: 0, duckweed: 0,
+        snail: 0, shrimp: 0, fish: 0
+    };
+
+    // 步骤标志
+    let containerReady = false;     // 步骤1
+    let sandWaterReady = false;     // 步骤2
+    let plantsExist = false;        // 步骤3 (至少有一种植物数量>0)
+    let plantsAlive = false;        // 步骤4 (植物存活状态)
+    // 步骤5无需单独标志，允许添加动物的前提是 plantsAlive == true
+
+    // 当前选中的物种（用于点击水族箱添加）
+    let selectedSpeciesKey = "hyacinth";  // 默认水葫芦
+
+    // 环境值
+    let lightLevel = "medium";     // weak, medium, strong
+    let waterTemp = 20;            // 0-30
+
+    // DOM 元素
+    const speciesListDiv = document.getElementById("speciesListContainer");
+    const livingBadgesDiv = document.getElementById("livingBadges");
+    const healthPercentSpan = document.getElementById("healthPercent");
+    const healthBar = document.getElementById("healthBar");
+    const resetBtn = document.getElementById("resetEcoBtn");
+    const simulateAliveBtn = document.getElementById("simulatePlantAliveBtn");
+    const lightSelect = document.getElementById("lightIntensity");
+    const tempSlider = document.getElementById("tempSlider");
+    const tempValueSpan = document.getElementById("tempValue");
+    const aquariumBottle = document.getElementById("aquariumBottle");
+    const sandLayerDiv = document.getElementById("sandLayer");
+    const stepMsgHint = document.getElementById("stepMsgHint");
+
+    // 辅助更新步骤UI
+    function updateStepsUI() {
+        // 步骤1: 容器
+        document.getElementById("step1").querySelector(".step-dot").classList.toggle("done", containerReady);
+        // 步骤2: 铺沙加水
+        document.getElementById("step2").querySelector(".step-dot").classList.toggle("done", sandWaterReady);
+        // 步骤3: 种植植物(存在植物)
+        document.getElementById("step3").querySelector(".step-dot").classList.toggle("done", plantsExist);
+        // 步骤4: 植物存活
+        const step4Dot = document.getElementById("step4").querySelector(".step-dot");
+        if (plantsAlive) step4Dot.classList.add("done");
+        else step4Dot.classList.remove("done");
+        // 步骤5: 放入动物 (只要有任何动物数量>0就视觉提示完成)
+        const hasAnimals = (counts.snail + counts.shrimp + counts.fish) > 0;
+        const step5Dot = document.getElementById("step5").querySelector(".step-dot");
+        if (hasAnimals) step5Dot.classList.add("done");
+        else step5Dot.classList.remove("done");
+        // 沙层显示
+        if (sandWaterReady) sandLayerDiv.style.display = "block";
+        else sandLayerDiv.style.display = "none";
+    }
+
+    // 通用校验: 增加物种之前的步骤权限 (返回true/false，并弹窗)
+    function canAddSpecies(type, speciesKey) {
+        if (!containerReady) {
+            alert("❌ 步骤错误：请先完成「准备容器」！点击左侧步骤或重置后依次操作。");
+            return false;
+        }
+        if (!sandWaterReady) {
+            alert("❌ 步骤错误：请先「铺沙加水」！");
+            return false;
+        }
+        if (type === "plant") {
+            // 植物添加不需要植物存活标志，但需要铺沙完成
+            return true;
+        } else { // 消费者或分解者 (动物)
+            if (!plantsExist) {
+                alert("❌ 缺氧警告：还没有种植任何植物！请先添加植物（水草/金鱼藻等）。");
+                return false;
+            }
+            if (!plantsAlive) {
+                alert("⚠️ 严重缺氧：植物尚未存活！请点击「模拟植物存活」让植物适应水质并开始产氧。");
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // 更新植物存在标志
+    function updatePlantsExistFlag() {
+        const totalPlants = counts.hyacinth + counts.hornwort + counts.grass + counts.duckweed;
+        plantsExist = totalPlants > 0;
+        if (!plantsExist) {
+            // 如果没有任何植物，植物存活强制为false
+            plantsAlive = false;
+        }
+        updateStepsUI();
+        updateHealthScore(); // 健康度重算
+        renderBadges();
+    }
+
+    // 增加物种数量
+    function addSpecies(key, type, speciesName) {
+        // 权限检查
+        if (!canAddSpecies(type, key)) return false;
+        counts[key] = (counts[key] || 0) + 1;
+        if (type === "plant") {
+            updatePlantsExistFlag();
+            // 添加植物后，如果植物存活标志曾经为true, 但为了模拟真实，新植物需要等待存活，故将存活重置为false，提醒
+            if (plantsAlive) {
+                plantsAlive = false;
+                alert("🌿 新植物加入！需要时间适应水质，请重新点击「模拟植物存活」使其稳定。");
+                updateStepsUI();
+            } else {
+                updateStepsUI();
+            }
+        } else {
+            // 动物添加后直接更新健康度
+            updateHealthScore();
+            renderBadges();
+        }
+        if (type !== "plant") renderBadges();
+        updateHealthScore();
+        renderBadges();
+        // 同步更新界面计数器 (UI按钮上数量)
+        refreshCountersUI();
+        return true;
+    }
+
+    function removeSpecies(key) {
+        if (counts[key] > 0) {
+            counts[key]--;
+            const speciesInfo = speciesDB.find(s => s.key === key);
+            if (speciesInfo && speciesInfo.type === "plant") {
+                updatePlantsExistFlag();
+                // 如果植物数量归零，植物存活标记为false
+                if (counts.hyacinth+counts.hornwort+counts.grass+counts.duckweed === 0) {
+                    plantsAlive = false;
+                    updateStepsUI();
+                }
+            }
+            updateHealthScore();
+            renderBadges();
+            refreshCountersUI();
+        }
+    }
+
+    // 刷新左侧每个物种的计数器显示
+    function refreshCountersUI() {
+        document.querySelectorAll(".species-item").forEach(item => {
+            const key = item.getAttribute("data-key");
+            const countSpan = item.querySelector(".count-num");
+            if (countSpan && key) {
+                countSpan.innerText = counts[key] || 0;
+            }
+        });
+    }
+
+    // 渲染生态瓶内生物徽章
+    function renderBadges() {
+        let html = '';
+        for (let sp of speciesDB) {
+            const num = counts[sp.key];
+            if (num > 0) {
+                html += `<span class="badge">${sp.emoji} ${sp.name} x${num}</span>`;
+            }
+        }
+        if (html === '') html = '<span style="opacity:0.6">🌱 等待放入生物...</span>';
+        livingBadgesDiv.innerHTML = html;
+    }
+
+    // 健康度计算模型 (综合考虑平衡、环境、步骤)
+    function computeHealth() {
+        if (!containerReady || !sandWaterReady) return 0;
+        let score = 0;
+        // 基础分10 (容器和水)
+        score += 10;
+        // 植物相关: 植物总量 + 存活状态
+        const totalPlants = counts.hyacinth + counts.hornwort + counts.grass + counts.duckweed;
+        let plantScore = 0;
+        if (totalPlants > 0 && plantsAlive) {
+            // 植物最佳区间 3~8株, 超过或太少略减
+            if (totalPlants >= 2 && totalPlants <= 8) plantScore = 30;
+            else if (totalPlants > 8) plantScore = 22;
+            else if (totalPlants === 1) plantScore = 12;
+        } else if (totalPlants > 0 && !plantsAlive) {
+            plantScore = 4; // 植物未存活
+        } else {
+            plantScore = 0;
+        }
+        score += plantScore;
+
+        // 动物平衡 (消费者+分解者)
+        const totalAnimals = counts.snail + counts.shrimp + counts.fish;
+        let animalBalance = 0;
+        if (plantsAlive && totalPlants > 0) {
+            // 理想比例: 动物:植物 ≈ 1:2 ~ 1:4 之间，分解者存在加分
+            let ratio = totalAnimals / totalPlants;
+            if (totalAnimals === 0) animalBalance = 5;  // 无动物也一般
+            else if (ratio >= 0.2 && ratio <= 1.2) animalBalance = 28;
+            else if (ratio < 0.2) animalBalance = 15;
+            else animalBalance = 10;
+            // 田螺作为分解者加分
+            if (counts.snail > 0) animalBalance += 5;
+            // 鱼虾过多减分惩罚
+            if (counts.fish > 3) animalBalance -= 8;
+            if (counts.shrimp > 5) animalBalance -= 5;
+            animalBalance = Math.min(35, Math.max(0, animalBalance));
+        } else {
+            if (totalAnimals > 0 && !plantsAlive) animalBalance = 0; // 动物无植物存活严重缺氧
+            else animalBalance = 0;
+        }
+        score += animalBalance;
+
+        // 环境分 (光照+温度)
+        let envScore = 0;
+        // 光照最佳中光，弱光或强光扣分
+        if (lightLevel === "medium") envScore += 12;
+        else if (lightLevel === "weak") envScore += 6;
+        else envScore += 5;
+        // 温度最佳 18~26℃
+        if (waterTemp >= 18 && waterTemp <= 26) envScore += 13;
+        else if (waterTemp >= 12 && waterTemp <= 30) envScore += 6;
+        else envScore += 2;
+        score += envScore;
+        
+        // 额外步骤完整奖励
+        if (containerReady && sandWaterReady && plantsExist && plantsAlive) score += 5;
+        if (counts.snail > 0) score += 2; // 分解者奖励
+        
+        let final = Math.min(100, Math.max(0, Math.floor(score)));
+        return final;
+    }
+
+    function updateHealthScore() {
+        let health = computeHealth();
+        healthPercentSpan.innerText = health + "%";
+        healthBar.value = health;
+        // 根据健康度添加文字反馈
+        if (health >= 80) stepMsgHint.innerText = "🎉 生态瓶非常健康！平衡完美！";
+        else if (health >= 60) stepMsgHint.innerText = "👍 状态良好，注意动植物比例。";
+        else if (health >= 30) stepMsgHint.innerText = "⚠️ 生态失衡，调整生物数量或环境。";
+        else stepMsgHint.innerText = "💀 濒临崩溃！请重置并按照科学步骤重建！";
+        if(!plantsAlive && plantsExist) stepMsgHint.innerText = "🌿 植物尚未存活！点击「模拟植物存活」让植物恢复产氧。";
+        if(!plantsExist && sandWaterReady) stepMsgHint.innerText = "🌱 请先添加植物（水草/金鱼藻等）";
+    }
+
+    // 重置所有
+    function resetEcosystem() {
+        containerReady = false;
+        sandWaterReady = false;
+        plantsAlive = false;
+        // 清空数量
+        for (let k in counts) counts[k] = 0;
+        updatePlantsExistFlag(); // plantsExist会重算
+        plantsAlive = false;
+        // 重置环境默认
+        lightLevel = "medium";
+        waterTemp = 20;
+        lightSelect.value = "medium";
+        tempSlider.value = "20";
+        tempValueSpan.innerText = "20";
+        // 清空选中物种默认
+        selectedSpeciesKey = "hyacinth";
+        updateStepsUI();
+        renderBadges();
+        refreshCountersUI();
+        updateHealthScore();
+        // 高亮重置高亮样式
+        highlightSelectedSpecies();
+        stepMsgHint.innerText = "✅ 已重置生态瓶。请按顺序：容器→铺沙加水→植物→存活→动物";
+    }
+
+    // 步骤动作函数 (外部按钮模拟)
+    function prepareContainer() {
+        if (!containerReady) {
+            containerReady = true;
+            alert("🧴 油桶已裁剪清洗，得到一个透明开口容器！");
+            updateStepsUI();
+            updateHealthScore();
+        } else {
+            alert("容器已经准备好了！");
+        }
+    }
+    function addSandWater() {
+        if (!containerReady) {
+            alert("请先准备容器！");
+            return;
+        }
+        if (!sandWaterReady) {
+            sandWaterReady = true;
+            alert("🏖️ 铺好沙子，加入大半桶自然水。水环境已创建。");
+            updateStepsUI();
+            updateHealthScore();
+        } else {
+            alert("沙子和水已经添加过了。");
+        }
+    }
+
+    // 左侧构建物种列表 + 高亮选中 + 增减按钮
+    function buildSpeciesUI() {
+        speciesListDiv.innerHTML = '';
+        speciesDB.forEach(sp => {
+            const div = document.createElement('div');
+            div.className = 'species-item';
+            div.setAttribute('data-key', sp.key);
+            div.setAttribute('data-type', sp.type);
+            div.innerHTML = `
+                <div class="species-name">
+                    <span class="species-emoji">${sp.emoji}</span>
+                    <span>${sp.name}</span>
+                </div>
+                <div class="counter">
+                    <button class="dec-btn" data-key="${sp.key}">-</button>
+                    <span class="count-num">0</span>
+                    <button class="inc-btn" data-key="${sp.key}">+</button>
+                </div>
+            `;
+            div.addEventListener('click', (e) => {
+                // 防止点到按钮内部冒泡导致选中切换
+                if(e.target.tagName === 'BUTTON') return;
+                selectedSpeciesKey = sp.key;
+                highlightSelectedSpecies();
+            });
+            speciesListDiv.appendChild(div);
+            const incBtn = div.querySelector('.inc-btn');
+            const decBtn = div.querySelector('.dec-btn');
+            incBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addSpecies(sp.key, sp.type, sp.name);
+            });
+            decBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeSpecies(sp.key);
+            });
+        });
+        refreshCountersUI();
+        highlightSelectedSpecies();
+    }
+
+    function highlightSelectedSpecies() {
+        document.querySelectorAll('.species-item').forEach(item => {
+            const key = item.getAttribute('data-key');
+            if (key === selectedSpeciesKey) item.classList.add('selected');
+            else item.classList.remove('selected');
+        });
+    }
+
+    // 模拟植物存活
+    function simulatePlantsAlive() {
+        if (!sandWaterReady) {
+            alert("请先完成铺沙加水再种植植物！");
+            return;
+        }
+        const totalPlants = counts.hyacinth + counts.hornwort + counts.grass + counts.duckweed;
+        if (totalPlants === 0) {
+            alert("❌ 还没有任何植物！请先添加水生植物（水草/金鱼藻等）到生态瓶。");
+            return;
+        }
+        if (!plantsAlive) {
+            plantsAlive = true;
+            alert("🌞 植物已经稳定存活！开始光合作用产氧，现在可以安全放入鱼虾田螺了！");
+            updateStepsUI();
+            updateHealthScore();
+        } else {
+            alert("植物已经是存活状态！");
+        }
+    }
+
+    // 点击水族箱添加选中的物种
+    function onAquariumClick() {
+        const selectedSpec = speciesDB.find(s => s.key === selectedSpeciesKey);
+        if (!selectedSpec) return;
+        addSpecies(selectedSpec.key, selectedSpec.type, selectedSpec.name);
+    }
+
+    // 环境事件绑定
+    function bindEnvironment() {
+        lightSelect.addEventListener('change', (e) => {
+            lightLevel = e.target.value;
+            updateHealthScore();
+        });
+        tempSlider.addEventListener('input', (e) => {
+            waterTemp = parseInt(e.target.value);
+            tempValueSpan.innerText = waterTemp;
+            updateHealthScore();
+        });
+    }
+
+    // 手工步骤简易按钮 (在左侧上方加两个快捷按钮, 为了更好操作在环境控制上方添加)
+    function addStepButtons() {
+        const stepBar = document.createElement('div');
+        stepBar.style.display = 'flex';
+        stepBar.style.gap = '8px';
+        stepBar.style.marginBottom = '16px';
+        stepBar.innerHTML = `
+            <button id="stepContainerBtn" style="flex:1; background:#5f8b5b; border:none; border-radius:40px; padding:8px; color:white; font-weight:bold;">1️⃣ 准备容器</button>
+            <button id="stepSandWaterBtn" style="flex:1; background:#5f8b5b; border:none; border-radius:40px; padding:8px; color:white; font-weight:bold;">2️⃣ 铺沙加水</button>
+        `;
+        const leftPanel = document.querySelector('.control-panel');
+        leftPanel.insertBefore(stepBar, leftPanel.firstChild.nextSibling);
+        document.getElementById('stepContainerBtn').addEventListener('click', prepareContainer);
+        document.getElementById('stepSandWaterBtn').addEventListener('click', addSandWater);
+    }
+
+    function init() {
+        buildSpeciesUI();
+        bindEnvironment();
+        addStepButtons();
+        resetEcosystem();  // 初始状态全未完成
+        aquariumBottle.addEventListener('click', onAquariumClick);
+        resetBtn.addEventListener('click', resetEcosystem);
+        simulateAliveBtn.addEventListener('click', simulatePlantsAlive);
+        updateStepsUI();
+        renderBadges();
+        updateHealthScore();
+    }
+
+    init();
+</script>
+</body>
+</html>
